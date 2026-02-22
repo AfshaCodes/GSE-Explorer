@@ -6,6 +6,7 @@ A full-stack bioinformatics web application for analyzing NCBI GEO gene expressi
 
 ## Project Structure
 
+![App Screenshot](gse.PNG)
 ```
 gse-app/
 ├── app.py                  ← Flask server (all routes + API)
