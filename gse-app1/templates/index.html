@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSE Explorer — Real Gene Expression Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060a12;--surface:#0d1420;--surface2:#131c2e;--surface3:#1a2540;
+  --border:#1f3050;--border2:#2a4060;
+  --cyan:#00f0d4;--blue:#3b82f6;--violet:#8b5cf6;--pink:#ec4899;
+  --amber:#f59e0b;--green:#22c55e;--red:#ef4444;
+  --text:#e8edf5;--muted:#4a6080;--subtle:#6b8ab0;
+  --mono:'Space Mono',monospace; --sans:'DM Sans',sans-serif;
+  --r:12px; --rs:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse 70% 40% at 15% 0%,rgba(0,240,212,.05) 0%,transparent 65%),
+             radial-gradient(ellipse 50% 50% at 85% 100%,rgba(139,92,246,.06) 0%,transparent 65%);pointer-events:none}
+
+/* ── Header ── */
+.header{border-bottom:1px solid var(--border);padding:16px 0;position:sticky;top:0;z-index:100;
+  background:rgba(6,10,18,.94);backdrop-filter:blur(12px)}
+.header-inner{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--cyan),var(--blue));
+  border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;font-weight:700;color:#060a12}
+.logo h1{font-size:16px;font-weight:700} .logo h1 em{font-style:normal;color:var(--cyan)}
+.logo p{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.hdr-pills{display:flex;gap:10px;align-items:center}
+.pill{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:20px;
+  border:1px solid var(--border);color:var(--subtle);background:var(--surface2)}
+.pill.live{border-color:rgba(34,197,94,.3);color:var(--green);background:rgba(34,197,94,.07)}
+.pill.live::before{content:'● ';animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Layout ── */
+.wrap{max-width:1400px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 32px;margin-bottom:20px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue),var(--violet))}
+.card-sm{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px}
+
+/* ── Input section ── */
+.input-section{padding:32px 0 20px}
+.input-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
+.field label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:2px}
+.field-main{display:flex}
+.pfx{background:var(--surface2);border:1px solid var(--border);border-right:none;padding:0 14px;
+  height:46px;display:flex;align-items:center;font-family:var(--mono);font-size:12px;font-weight:700;
+  color:var(--cyan);border-radius:var(--rs) 0 0 var(--rs);flex-shrink:0}
+.gse-in{flex:1;height:46px;background:var(--bg);border:1px solid var(--border);border-left:none;
+  color:var(--text);font-family:var(--mono);font-size:15px;font-weight:700;padding:0 14px;
+  outline:none;border-radius:0 var(--rs) var(--rs) 0;transition:border-color .2s,box-shadow .2s;letter-spacing:1px}
+.gse-in:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,240,212,.1)}
+.sel{height:46px;background:var(--surface2);border:1px solid var(--border);color:var(--subtle);
+  font-family:var(--mono);font-size:11px;padding:0 12px;border-radius:var(--rs);outline:none;cursor:pointer;min-width:140px}
+.btn{height:46px;padding:0 22px;border:none;border-radius:var(--rs);font-family:var(--sans);
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#060a12}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,240,212,.3)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--subtle)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-sm{height:36px;padding:0 14px;font-size:11px}
+.btn-danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+
+.quick-row{margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ql{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.chip{font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:6px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--cyan);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--cyan);background:rgba(0,240,212,.07)}
+.chip span{color:var(--muted);font-size:9px;margin-left:3px}
+
+/* ── Status ── */
+.status-bar{display:flex;align-items:center;gap:12px;padding:12px 18px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;font-family:var(--mono);font-size:12px}
+.s-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.s-dot.idle{background:var(--muted)} .s-dot.loading{background:var(--amber);animation:blink .8s infinite}
+.s-dot.success{background:var(--green)} .s-dot.error{background:var(--red)}
+.s-text{color:var(--subtle);flex:1} .s-text strong{color:var(--text)} .s-right{font-size:10px;color:var(--muted)}
+.progress-track{height:2px;background:var(--surface2);border-radius:1px;margin-bottom:20px;overflow:hidden;display:none}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue));transition:width .35s ease}
+
+/* ── Stat Cards ── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--ac,var(--cyan));opacity:.5}
+.stat-icon{font-size:18px;margin-bottom:8px;display:block}
+.stat-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+.stat-val{font-size:26px;font-weight:700;line-height:1;color:var(--ac,var(--cyan));letter-spacing:-1px}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--mono)}
+
+/* ── Tabs ── */
+.tab-nav{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;padding-bottom:0}
+.tab-btn{padding:10px 16px;font-size:11px;font-weight:600;font-family:var(--mono);cursor:pointer;border:none;
+  background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;
+  border-radius:8px 8px 0 0;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab-btn:hover{color:var(--text)} .tab-btn.active{color:var(--cyan);border-bottom-color:var(--cyan);background:rgba(0,240,212,.04)}
+.tab-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.6}
+.tab-panel{display:none} .tab-panel.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Chart Grid ── */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:18px;margin-bottom:20px}
+.chart-grid.single{grid-template-columns:1fr}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px}
+.chart-card.span2{grid-column:span 2}
+.ct{font-size:13px;font-weight:600;margin-bottom:3px}
+.cd{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px}
+.plot-wrap{position:relative;width:100%;min-height:120px;display:flex;align-items:center;justify-content:center}
+.plot-wrap img{width:100%;border-radius:6px;display:block}
+.plot-loading{font-family:var(--mono);font-size:11px;color:var(--muted);padding:40px 20px;text-align:center}
+
+/* ── Table ── */
+.tbl-controls{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-in{flex:1;min-width:180px;height:36px;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:0 12px;border-radius:var(--rs);outline:none;transition:border-color .2s}
+.search-in:focus{border-color:var(--cyan)} .search-in::placeholder{color:var(--muted)}
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)}
+thead th{background:var(--surface2);padding:9px 12px;text-align:left;font-size:9px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.5px;position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap}
+thead th:hover{color:var(--text)}
+tbody td{padding:8px 12px;border-top:1px solid var(--border);color:var(--text);white-space:nowrap}
+tbody tr:hover td{background:rgba(0,240,212,.02)}
+.badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-up{background:rgba(34,197,94,.12);color:var(--green)}
+.badge-down{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-ns{background:rgba(107,138,176,.1);color:var(--subtle)}
+.pager{display:flex;gap:8px;align-items:center;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* ── Metadata ── */
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.meta-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px}
+.meta-key{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px}
+.meta-val{font-size:13px;font-weight:500;color:var(--text)}
+
+/* ── Export bar ── */
+.export-bar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 20px;background:var(--surface2);border-radius:var(--rs);margin-bottom:20px;align-items:center}
+.export-label{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* ── Tooltip ── */
+#tip{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text);pointer-events:none;
+  z-index:9999;opacity:0;transition:opacity .12s;max-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#tip.show{opacity:1}
+
+/* ── Warning ── */
+.warning-bar{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--rs);
+  padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--amber);margin-bottom:16px}
+
+::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}.chart-card.span2{grid-column:span 1}.wrap{padding:0 14px}}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">GEO</div>
+      <div>
+        <h1>GSE <em>Explorer</em></h1>
+        <p>Real Gene Expression Analysis · NCBI GEO</p>
+      </div>
+    </div>
+    <div class="hdr-pills">
+      <span class="pill">Python + Flask Backend</span>
+      <span class="pill live" id="live-pill">Idle</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<!-- INPUT -->
+<section class="input-section">
+  <div class="card">
+    <div class="input-row">
+      <div class="field" style="max-width:300px">
+        <label>GEO Accession ID</label>
+        <div class="field-main">
+          <div class="pfx">GSE</div>
+          <input class="gse-in" id="gseInput" type="text" placeholder="e.g. 15471" maxlength="15" />
+        </div>
+      </div>
+      <div class="field" style="max-width:150px">
+        <label>Max Samples</label>
+        <select class="sel" id="maxSamples">
+          <option value="20">20 samples</option>
+          <option value="40" selected>40 samples</option>
+          <option value="60">60 samples</option>
+          <option value="100">100 samples</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:160px">
+        <label>Normalization</label>
+        <select class="sel" id="normMethod">
+          <option value="quantile" selected>Quantile</option>
+          <option value="zscore">Z-score</option>
+          <option value="median_center">Median Center</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:150px">
+        <label>DEG Method</label>
+        <select class="sel" id="degMethod">
+          <option value="welch" selected>Welch t-test</option>
+          <option value="ttest">Student t-test</option>
+          <option value="mannwhitney">Mann-Whitney U</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:130px">
+        <label>|log₂FC| ≥</label>
+        <input class="sel" id="fcThresh" type="number" value="1.0" step="0.25" min="0" style="height:46px;color:var(--text)">
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">▶ Analyze</button>
+        <button class="btn btn-ghost" onclick="clearSession()">✕ Clear</button>
+      </div>
+    </div>
+    <div class="quick-row">
+      <span class="ql">Quick load:</span>
+      <span class="chip" onclick="quickLoad('GSE15471')">GSE15471<span>Pancreatic cancer</span></span>
+      <span class="chip" onclick="quickLoad('GSE48213')">GSE48213<span>Breast cancer</span></span>
+      <span class="chip" onclick="quickLoad('GSE73578')">GSE73578<span>Lung adenocarcinoma</span></span>
+      <span class="chip" onclick="quickLoad('GSE102454')">GSE102454<span>Colorectal</span></span>
+      <span class="chip" onclick="quickLoad('GSE55945')">GSE55945<span>Hepatocellular</span></span>
+      {% if cached_datasets %}
+      | <span class="ql">Cached:</span>
+      {% for gse in cached_datasets[:3] %}
+      <span class="chip" style="color:var(--amber)" onclick="quickLoad('{{ gse }}')">{{ gse }}<span>cached</span></span>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- STATUS -->
+<div class="status-bar">
+  <div class="s-dot idle" id="sDot"></div>
+  <div class="s-text" id="sText">Enter a GSE accession ID and click <strong>Analyze</strong> to fetch real data from NCBI GEO.</div>
+  <div class="s-right" id="sRight"></div>
+</div>
+<div class="progress-track" id="progTrack"><div class="progress-bar" id="progBar" style="width:0%"></div></div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
+
+  <!-- Warning -->
+  <div class="warning-bar" id="warningBar" style="display:none">
+    ⚠ <span id="warningText"></span>
+  </div>
+
+  <!-- Metadata -->
+  <div class="meta-grid" id="metaGrid"></div>
+
+  <!-- Stat Cards -->
+  <div class="stat-row" id="statRow"></div>
+
+  <!-- Export bar -->
+  <div class="export-bar">
+    <span class="export-label">Export:</span>
+    <a href="/api/export/degs_csv"        class="btn btn-ghost btn-sm">DEGs CSV</a>
+    <a href="/api/export/degs_excel"       class="btn btn-ghost btn-sm">Full Excel</a>
+    <a href="/api/export/expression_csv"   class="btn btn-ghost btn-sm">Expression CSV</a>
+    <a href="/api/export/enrichment_csv"   class="btn btn-ghost btn-sm">Enrichment CSV</a>
+    <button class="btn btn-danger btn-sm" onclick="clearCache()">Clear Cache</button>
+  </div>
+
+  <!-- Tabs -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('overview')" data-tab="overview"><span class="tab-dot"></span>Overview</button>
+    <button class="tab-btn" onclick="switchTab('heatmap')"     data-tab="heatmap"><span class="tab-dot"></span>Heatmap</button>
+    <button class="tab-btn" onclick="switchTab('volcano')"     data-tab="volcano"><span class="tab-dot"></span>Volcano</button>
+    <button class="tab-btn" onclick="switchTab('pca')"         data-tab="pca"><span class="tab-dot"></span>PCA</button>
+    <button class="tab-btn" onclick="switchTab('violin')"      data-tab="violin"><span class="tab-dot"></span>Distribution</button>
+    <button class="tab-btn" onclick="switchTab('correlation')" data-tab="correlation"><span class="tab-dot"></span>Correlation</button>
+    <button class="tab-btn" onclick="switchTab('enrichment')"  data-tab="enrichment"><span class="tab-dot"></span>Pathways</button>
+    <button class="tab-btn" onclick="switchTab('degs')"        data-tab="degs"><span class="tab-dot"></span>DEG Table</button>
+    <button class="tab-btn" onclick="switchTab('qc')"          data-tab="qc"><span class="tab-dot"></span>QC</button>
+  </nav>
+
+  <!-- Overview -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="chart-grid">
+      <div class="chart-card"><div class="ct">Sample Expression Distribution</div><div class="cd">Per-sample box plot — normalized log₂ CPM</div><div class="plot-wrap" id="plot-boxplot"><div class="plot-loading">Loading…</div></div></div>
+      <div class="chart-card"><div class="ct">MA Plot (Bland–Altman)</div><div class="cd">Average vs fold change — red = significant DEGs</div><div class="plot-wrap" id="plot-ma"><div class="plot-loading">Loading…</div></div></div>
+      <div class="chart-card"><div class="ct">Per-Sample Expression Density</div><div class="cd">KDE curves — cyan = Control, violet = Treatment</div><div class="plot-wrap" id="plot-density"><div class="plot-loading">Loading…</div></div></div>
+    </div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="tab-panel" id="tab-heatmap">
+    <div class="chart-grid single">
+      <div class="chart-card"><div class="ct">Expression Heatmap — Top Variable Genes</div><div class="cd">Hierarchically clustered · seaborn clustermap · RdBu_r color scale</div>
+        <div style="margin-bottom:12px;display:flex;gap:10px">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--muted)">Genes: <input id="hmGenes" type="number" value="50" min="10" max="200" style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);padding:3px 7px;border-radius:5px;outline:none"></label>
+          <label style="font-family:var(--mono);font-size:10px;color:var(--muted)">Samples: <input id="hmSamples" type="number" value="30" min="4" max="100" style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);padding:3px 7px;border-radius:5px;outline:none"></label>
+          <button class="btn btn-ghost btn-sm" onclick="reloadHeatmap()">Redraw</button>
+        </div>
+        <div class="plot-wrap" id="plot-heatmap"><div class="plot-loading">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Volcano -->
+  <div class="tab-panel" id="tab-volcano">
+    <div class="chart-grid single"><div class="chart-card"><div class="ct">Volcano Plot — Differential Expression</div><div class="cd">Real Welch t-test statistics · BH-corrected p-values · top DEGs labeled</div><div class="plot-wrap" id="plot-volcano"><div class="plot-loading">Loading…</div></div></div></div>
+  </div>
+
+  <!-- PCA -->
+  <div class="tab-panel" id="tab-pca">
+    <div class="chart-grid single"><div class="chart-card"><div class="ct">PCA — PC1 vs PC2 + Scree Plot</div><div class="cd">sklearn PCA · top 1000 variable genes · 95% confidence ellipses</div><div class="plot-wrap" id="plot-pca"><div class="plot-loading">Loading…</div></div></div></div>
+    <div class="chart-grid single" style="margin-top:16px"><div class="chart-card"><div class="ct">Hierarchical Clustering Dendrogram</div><div class="cd">Complete linkage · Euclidean distance · scipy</div><div class="plot-wrap" id="plot-dendro"><div class="plot-loading">Loading…</div></div></div></div>
+  </div>
+
+  <!-- Violin -->
+  <div class="tab-panel" id="tab-violin">
+    <div class="chart-grid single"><div class="chart-card"><div class="ct">Violin + QQ Plot</div><div class="cd">Kernel density estimation · scipy.stats.probplot normality check</div><div class="plot-wrap" id="plot-violin"><div class="plot-loading">Loading…</div></div></div></div>
+  </div>
+
+  <!-- Correlation -->
+  <div class="tab-panel" id="tab-correlation">
+    <div class="chart-grid single"><div class="chart-card"><div class="ct">Gene Correlation Matrix — Top 40 Variable Genes</div><div class="cd">Pearson r · seaborn heatmap · blue=negative, red=positive</div><div class="plot-wrap" id="plot-correlation"><div class="plot-loading">Loading…</div></div></div></div>
+    <div class="chart-grid" style="margin-top:16px">
+      <div class="chart-card">
+        <div class="ct">Top Co-expressed Gene Pairs</div>
+        <div class="cd">Highest absolute Pearson r from gene correlation matrix</div>
+        <div class="tbl-wrap" style="max-height:360px">
+          <table><thead><tr><th>#</th><th>Gene 1</th><th>Gene 2</th><th>Pearson r</th><th>Strength</th></tr></thead>
+          <tbody id="corr-pairs-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enrichment -->
+  <div class="tab-panel" id="tab-enrichment">
+    <div class="chart-grid single"><div class="chart-card"><div class="ct">Pathway Enrichment — Fisher's Exact Test (ORA)</div><div class="cd">Curated KEGG gene sets · BH-FDR corrected · bubble = overlap ratio</div><div class="plot-wrap" id="plot-enrichment"><div class="plot-loading">Loading…</div></div></div></div>
+    <div class="chart-grid single" style="margin-top:16px">
+      <div class="chart-card">
+        <div class="ct">Enrichment Table</div>
+        <div class="cd">All tested pathways · ranked by p-value</div>
+        <div class="tbl-wrap" style="max-height:400px">
+          <table><thead><tr><th>#</th><th>Pathway</th><th>Overlap</th><th>Gene Ratio</th><th>Fold Enrich.</th><th>p-value</th><th>padj</th><th>Status</th></tr></thead>
+          <tbody id="enrich-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEG Table -->
+  <div class="tab-panel" id="tab-degs">
+    <div class="chart-card-sm card">
+      <div class="ct" style="margin-bottom:14px">Differentially Expressed Genes — Full Table</div>
+      <div class="tbl-controls">
+        <input class="search-in" id="degSearch" placeholder="Search gene…" oninput="searchDEGs()">
+        <select class="sel" id="degFilter" onchange="loadDEGs(1)">
+          <option value="all">All genes</option>
+          <option value="sig">Significant only</option>
+          <option value="up">↑ Upregulated</option>
+          <option value="down">↓ Downregulated</option>
+        </select>
+        <select class="sel" id="degSort" onchange="loadDEGs(1)">
+          <option value="padj">Sort: padj</option>
+          <option value="abs_log2fc">Sort: |log₂FC|</option>
+          <option value="gene">Sort: Gene name</option>
+          <option value="-log10pval">Sort: −log₁₀p</option>
+        </select>
+        <span id="deg-count" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr>
+          <th>#</th><th>Gene</th><th>log₂FC</th><th>p-value</th><th>padj (BH)</th>
+          <th>Mean Ctrl</th><th>Mean Treat</th><th>Cohen's d</th><th>Direction</th>
+        </tr></thead>
+        <tbody id="deg-body"></tbody></table>
+      </div>
+      <div class="pager">
+        <button class="btn btn-ghost btn-sm" onclick="loadDEGs(DEG_PAGE-1)" id="prevBtn">‹ Prev</button>
+        <span id="page-info">Page 1</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadDEGs(DEG_PAGE+1)" id="nextBtn">Next ›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QC -->
+  <div class="tab-panel" id="tab-qc">
+    <div class="chart-grid single">
+      <div class="chart-card">
+        <div class="ct">QC Metrics — Per Sample</div>
+        <div class="cd">Mean, median, IQR, detection rate per sample</div>
+        <div class="tbl-wrap" style="max-height:450px">
+          <table><thead><tr><th>Sample</th><th>Group</th><th>Mean Expr</th><th>Median</th><th>Std Dev</th><th>IQR</th><th>Detected</th><th>Detect. Rate %</th></tr></thead>
+          <tbody id="qc-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dashboard -->
+<div style="height:48px"></div>
+</div><!-- /wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let DEG_PAGE  = 1;
+let DEG_PAGES = 1;
+let LOADED_TABS = new Set();
+
+// ════════════════════════════════════════════════════════════
+// STATUS HELPERS
+// ════════════════════════════════════════════════════════════
+function setStatus(type, msg, right='') {
+  document.getElementById('sDot').className = `s-dot ${type}`;
+  document.getElementById('sText').innerHTML = msg;
+  document.getElementById('sRight').textContent = right;
+  const pill = document.getElementById('live-pill');
+  pill.className = 'pill' + (type==='loading' ? ' live' : '');
+  pill.textContent = type==='loading' ? 'Processing…' : type==='success' ? 'Ready' : 'Idle';
+}
+function setProgress(pct) {
+  document.getElementById('progTrack').style.display = 'block';
+  document.getElementById('progBar').style.width = pct+'%';
+  if (pct >= 100) setTimeout(() => document.getElementById('progTrack').style.display='none', 700);
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ════════════════════════════════════════════════════════════
+// ANALYSIS
+// ════════════════════════════════════════════════════════════
+async function runAnalysis() {
+  let raw = document.getElementById('gseInput').value.trim().toUpperCase();
+  if (!raw) { alert('Please enter a GSE accession ID'); return; }
+  if (!raw.startsWith('GSE')) raw = 'GSE' + raw;
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('dashboard').style.display = 'none';
+  LOADED_TABS.clear();
+
+  const steps = [
+    [8,  `Connecting to NCBI GEO for <strong>${raw}</strong>…`],
+    [20, 'Downloading expression matrix…'],
+    [38, 'Normalizing (log₂ + quantile)…'],
+    [55, 'Running Welch t-test DEG analysis…'],
+    [70, 'PCA + hierarchical clustering…'],
+    [83, 'Pathway enrichment (Fisher exact)…'],
+    [92, 'Generating matplotlib plots…'],
+  ];
+
+  for (const [pct, msg] of steps) {
+    setStatus('loading', msg);
+    setProgress(pct);
+    await sleep(200);
+  }
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        gse_id:         raw,
+        max_samples:    +document.getElementById('maxSamples').value,
+        normalization:  document.getElementById('normMethod').value,
+        deg_method:     document.getElementById('degMethod').value,
+        fc_threshold:   +document.getElementById('fcThresh').value,
+        pval_threshold: 0.05,
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Analysis failed');
+
+    setProgress(100);
+    await sleep(300);
+
+    renderDashboard(data);
+    setStatus('success',
+      `✓ <strong>${raw}</strong> — ${data.qc.n_genes_filtered} genes × ${data.qc.n_samples} samples analyzed`,
+      new Date().toLocaleTimeString()
+    );
+  } catch(e) {
+    setStatus('error', `✗ Error: <strong>${e.message}</strong>`);
+    setProgress(100);
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function quickLoad(id) {
+  document.getElementById('gseInput').value = id.replace('GSE','');
+  runAnalysis();
+}
+
+// ════════════════════════════════════════════════════════════
+// DASHBOARD RENDER
+// ════════════════════════════════════════════════════════════
+function renderDashboard(data) {
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Warning
+  if (data.warning) {
+    document.getElementById('warningBar').style.display = 'block';
+    document.getElementById('warningText').textContent  = data.warning;
+  } else {
+    document.getElementById('warningBar').style.display = 'none';
+  }
+
+  // Metadata
+  const meta = data.metadata;
+  document.getElementById('metaGrid').innerHTML = [
+    ['Title',    meta.title || '—'],
+    ['Organism', meta.organism || '—'],
+    ['Platform', meta.platform || '—'],
+    ['Type',     meta.type || '—'],
+    ['PubMed',   meta.pubmed_id ? `<a href="https://pubmed.ncbi.nlm.nih.gov/${meta.pubmed_id}" target="_blank" style="color:var(--cyan)">${meta.pubmed_id}</a>` : '—'],
+    ['Source',   data.source || '—'],
+  ].map(([k,v]) => `<div class="meta-item"><div class="meta-key">${k}</div><div class="meta-val">${v}</div></div>`).join('');
+
+  // Summary text
+  if (meta.summary) {
+    document.getElementById('metaGrid').innerHTML += `<div class="meta-item" style="grid-column:1/-1"><div class="meta-key">Summary</div><div class="meta-val" style="font-size:12px;font-weight:400;color:var(--subtle);line-height:1.6">${meta.summary}</div></div>`;
+  }
+
+  // Stat cards
+  const d = data; const qc = d.qc; const deg = d.deg_summary;
+  document.getElementById('statRow').innerHTML = [
+    { label:'Genes Filtered', val: qc.n_genes_filtered, sub:`of ${qc.n_genes_raw} raw`, icon:'🧬', ac:'var(--cyan)' },
+    { label:'Samples',        val: qc.n_samples,        sub:`${qc.n_control} ctrl · ${qc.n_treatment} treat`, icon:'🧫', ac:'var(--blue)' },
+    { label:'DEGs (padj<0.05)', val: deg.n_significant, sub:`|log₂FC| ≥ ${deg.fc_threshold}`, icon:'⚡', ac:'var(--amber)' },
+    { label:'Upregulated',    val: deg.n_up,            sub:'Treatment > Control', icon:'↑',  ac:'var(--green)' },
+    { label:'Downregulated',  val: deg.n_down,          sub:'Control > Treatment', icon:'↓',  ac:'var(--red)' },
+    { label:'Top |log₂FC|',   val: Math.max(Math.abs(deg.max_log2fc||0), Math.abs(deg.min_log2fc||0)).toFixed(2), sub: deg.top_up_gene||'—', icon:'📈', ac:'var(--violet)' },
+    { label:'PC1 Variance',   val: d.pca.variance_explained[0].toFixed(1)+'%', sub:'Principal Component 1', icon:'🔵', ac:'var(--blue)' },
+    { label:'Sig. Pathways',  val: d.enrichment_summary.n_significant, sub: d.enrichment_summary.top_pathway?.slice(0,20)||'—', icon:'🔬', ac:'var(--pink)' },
+  ].map(c => `<div class="stat-card" style="--ac:${c.ac}"><span class="stat-icon">${c.icon}</span><div class="stat-label">${c.label}</div><div class="stat-val">${c.val}</div><div class="stat-sub">${c.sub}</div></div>`).join('');
+
+  // Load active tab
+  switchTab('overview');
+}
+
+// ════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════
+async function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id==='tab-'+name));
+
+  if (LOADED_TABS.has(name)) return;
+  LOADED_TABS.add(name);
+
+  switch(name) {
+    case 'overview':    await loadPlot('boxplot'); await loadPlot('ma'); await loadPlot('density'); break;
+    case 'heatmap':     await loadPlot('heatmap'); break;
+    case 'volcano':     await loadPlot('volcano'); break;
+    case 'pca':         await loadPlot('pca'); await loadPlot('dendrogram'); break;
+    case 'violin':      await loadPlot('violin'); break;
+    case 'correlation': await loadPlot('correlation'); await loadCorrPairs(); break;
+    case 'enrichment':  await loadPlot('enrichment'); await loadEnrichmentTable(); break;
+    case 'degs':        await loadDEGs(1); break;
+    case 'qc':          await loadQC(); break;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// PLOT LOADER
+// ════════════════════════════════════════════════════════════
+async function loadPlot(name, params='') {
+  const wrap = document.getElementById(`plot-${name}`);
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="plot-loading">⟳ Generating plot…</div>';
+  try {
+    const res  = await fetch(`/api/plot/${name}${params ? '?'+params : ''}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    wrap.innerHTML = `<img src="${data.image}" alt="${name} plot">`;
+  } catch(e) {
+    wrap.innerHTML = `<div class="plot-loading" style="color:var(--red)">✗ ${e.message}</div>`;
+  }
+}
+
+async function reloadHeatmap() {
+  const n_genes   = document.getElementById('hmGenes').value;
+  const n_samples = document.getElementById('hmSamples').value;
+  await loadPlot('heatmap', `n_genes=${n_genes}&n_samples=${n_samples}`);
+}
+
+// ════════════════════════════════════════════════════════════
+// DEG TABLE
+// ════════════════════════════════════════════════════════════
+let DEG_SEARCH_TIMEOUT;
+
+function searchDEGs() {
+  clearTimeout(DEG_SEARCH_TIMEOUT);
+  DEG_SEARCH_TIMEOUT = setTimeout(() => loadDEGs(1), 350);
+}
+
+async function loadDEGs(page=1) {
+  if (page < 1 || page > DEG_PAGES) return;
+  DEG_PAGE = page;
+
+  const q      = document.getElementById('degSearch')?.value || '';
+  const filter = document.getElementById('degFilter')?.value || 'all';
+  const sort   = document.getElementById('degSort')?.value || 'padj';
+
+  const url = `/api/deg_table?page=${page}&per_page=50&q=${encodeURIComponent(q)}&filter=${filter}&sort=${sort}&dir=asc`;
+  const res  = await fetch(url);
+  const data = await res.json();
+  if (data.error) return;
+
+  DEG_PAGES = data.pages;
+  document.getElementById('deg-count').textContent = `${data.total} genes`;
+  document.getElementById('page-info').textContent = `Page ${data.page} of ${data.pages}`;
+  document.getElementById('prevBtn').disabled = page <= 1;
+  document.getElementById('nextBtn').disabled = page >= data.pages;
+
+  const fcColor = v => v >= 1 ? 'var(--green)' : v <= -1 ? 'var(--red)' : 'var(--subtle)';
+  const badge   = r => r.is_sig_deg
+    ? (r.log2fc > 0 ? '<span class="badge badge-up">↑ Up</span>' : '<span class="badge badge-down">↓ Down</span>')
+    : '<span class="badge badge-ns">NS</span>';
+
+  document.getElementById('deg-body').innerHTML = data.rows.map((r, i) => `
+    <tr>
+      <td style="color:var(--muted)">${(page-1)*50+i+1}</td>
+      <td style="font-weight:${r.is_sig_deg?700:400};color:${r.is_sig_deg?'var(--text)':'var(--subtle)'}">${r.gene}</td>
+      <td style="color:${fcColor(r.log2fc)};font-weight:600">${r.log2fc>=0?'+':''}${r.log2fc?.toFixed(3)}</td>
+      <td>${r.pval < 0.001 ? r.pval.toExponential(2) : r.pval?.toFixed(4)}</td>
+      <td style="color:${r.padj<0.05?'var(--cyan)':'var(--muted)'}">${r.padj < 0.001 ? r.padj.toExponential(2) : r.padj?.toFixed(4)}</td>
+      <td>${r.mean_ctrl?.toFixed(3)}</td>
+      <td>${r.mean_treat?.toFixed(3)}</td>
+      <td>${r.cohens_d?.toFixed(3)}</td>
+      <td>${badge(r)}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// CORRELATION PAIRS TABLE
+// ════════════════════════════════════════════════════════════
+async function loadCorrPairs() {
+  const res  = await fetch('/api/gene_corr');
+  const data = await res.json();
+  if (data.error) return;
+
+  const rColor = r => r > 0.7 ? 'var(--red)' : r < -0.7 ? 'var(--blue)' : r > 0.4 ? 'var(--amber)' : 'var(--muted)';
+  const strength = r => Math.abs(r) > 0.8 ? 'Strong' : Math.abs(r) > 0.5 ? 'Moderate' : 'Weak';
+
+  document.getElementById('corr-pairs-body').innerHTML = data.top_pairs.map((p,i) => `
+    <tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:var(--text)">${p.gene1}</td>
+      <td style="color:var(--text)">${p.gene2}</td>
+      <td style="color:${rColor(p.r)};font-weight:600">${p.r >= 0 ? '+' : ''}${p.r.toFixed(3)}</td>
+      <td style="color:${rColor(p.r)};font-size:10px">${strength(p.r)}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// ENRICHMENT TABLE
+// ════════════════════════════════════════════════════════════
+async function loadEnrichmentTable() {
+  const res  = await fetch('/api/enrichment');
+  const data = await res.json();
+  if (data.error || !data.pathways) return;
+
+  document.getElementById('enrich-body').innerHTML = data.pathways.map((p,i) => `
+    <tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:${p.significant?'var(--text)':'var(--subtle)'};font-weight:${p.significant?600:400}">${p.pathway}</td>
+      <td>${p.n_overlap}/${p.n_pathway_genes}</td>
+      <td>${(p.gene_ratio*100).toFixed(1)}%</td>
+      <td style="color:${p.fold_enrichment>2?'var(--amber)':'var(--subtle)'}">${p.fold_enrichment?.toFixed(2)}</td>
+      <td>${p.pval < 0.001 ? p.pval.toExponential(2) : p.pval?.toFixed(4)}</td>
+      <td style="color:${p.padj<0.05?'var(--cyan)':'var(--muted)'}">${p.padj?.toExponential(2)}</td>
+      <td>${p.significant ? '<span class="badge badge-up">✓ Sig</span>' : '<span class="badge badge-ns">NS</span>'}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// QC TABLE
+// ════════════════════════════════════════════════════════════
+async function loadQC() {
+  const res  = await fetch('/api/qc_data');
+  const data = await res.json();
+  if (data.error) return;
+
+  const gc = document.getElementById('qc-body');
+  gc.innerHTML = data.per_sample.map(s => `
+    <tr>
+      <td style="color:var(--text);font-weight:600">${s.sample?.slice(-8)}</td>
+      <td style="color:${s.group==='Control'?'var(--cyan)':'var(--violet)'}">${s.group}</td>
+      <td>${s.mean_expr?.toFixed(3)}</td>
+      <td>${s.median_expr?.toFixed(3)}</td>
+      <td>${s.std_expr?.toFixed(3)}</td>
+      <td>${s.iqr?.toFixed(3)}</td>
+      <td>${s.n_detected}</td>
+      <td style="color:${s.detection_rate>80?'var(--green)':'var(--amber)'}">${s.detection_rate?.toFixed(1)}%</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// CACHE / SESSION
+// ════════════════════════════════════════════════════════════
+async function clearSession() {
+  document.getElementById('dashboard').style.display = 'none';
+  setStatus('idle', 'Session cleared. Enter a new GSE ID to begin.');
+  LOADED_TABS.clear();
+}
+
+async function clearCache() {
+  if (!confirm('Clear all cached GEO data?')) return;
+  await fetch('/api/cache/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+  alert('Cache cleared.');
+}
+</script>
+</body>
+</html>
